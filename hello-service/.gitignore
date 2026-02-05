@@ -1,0 +1,21 @@
+# Maven & build output
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE metadata
+.idea/
+.vscode/
+.project
+.classpath
+.settings/
+
+# OS & editor cruft
+*.log
+*.swp
+.DS_Store
+
+# Docker
+.dockerignore
+
+# Spring Boot local config
+application-local.properties
