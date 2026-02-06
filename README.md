@@ -56,6 +56,50 @@ Create the following credentials in **Manage Jenkins → Credentials** and popul
 
 Update the credential IDs inside `Jenkinsfile` if you choose different names.
 
+### Trusting the OpenShift CA inside Jenkins
+When Jenkins runs in Docker it needs the cluster CA so both `oc login` and `docker push` trust your OpenShift endpoints. After exporting the CA to `~/openshift/ca.crt`, inject it into the Jenkins container:
+
+```bash
+# copy the CA file into the container's trust store
+docker cp ~/openshift/ca.crt jenkins-demo:/usr/local/share/ca-certificates/openshift-router-ca.crt
+docker exec jenkins-demo update-ca-certificates
+
+# make Docker inside Jenkins trust the registry route
+REG_HOST=default-route-openshift-image-registry.apps.ocp.local.kuddusi.cc
+docker exec jenkins-demo bash -lc "mkdir -p /etc/docker/certs.d/${REG_HOST} && cp /usr/local/share/ca-certificates/openshift-router-ca.crt /etc/docker/certs.d/${REG_HOST}/ca.crt"
+docker exec jenkins-demo systemctl restart docker || docker restart jenkins-demo
+```
+
+Then reference the CA in pipeline logins (already trusted by the OS cert store):
+
+```bash
+docker exec -it jenkins-demo oc login https://api.ocp.local.kuddusi.cc:6443 --token=$TOKEN --certificate-authority=/usr/local/share/ca-certificates/openshift-router-ca.crt
+```
+
+If you prefer not to restart Docker inside the container, run the last `mkdir`/`cp` lines on the Docker host under `/etc/docker/certs.d/${REG_HOST}` and restart the host daemon instead.
+
+### Trusting the OpenShift CA inside Jenkins
+When Jenkins runs in Docker it needs the cluster CA so both `oc login` and `docker push` trust your OpenShift endpoints. After exporting the CA to `~/openshift/ca.crt`, inject it into the Jenkins container:
+
+```bash
+# copy the CA file into the container's trust store
+docker cp ~/openshift/ca.crt jenkins-demo:/usr/local/share/ca-certificates/openshift-router-ca.crt
+docker exec jenkins-demo update-ca-certificates
+
+# make Docker inside Jenkins trust the registry route
+REG_HOST=default-route-openshift-image-registry.apps.ocp.local.kuddusi.cc
+docker exec jenkins-demo bash -lc "mkdir -p /etc/docker/certs.d/${REG_HOST} && cp /usr/local/share/ca-certificates/openshift-router-ca.crt /etc/docker/certs.d/${REG_HOST}/ca.crt"
+docker exec jenkins-demo systemctl restart docker || docker restart jenkins-demo
+```
+
+Then reference the CA in pipeline logins (already trusted by the OS cert store):
+
+```bash
+docker exec -it jenkins-demo oc login https://api.ocp.local.kuddusi.cc:6443 --token=$TOKEN --certificate-authority=/usr/local/share/ca-certificates/openshift-router-ca.crt
+```
+
+If you prefer not to restart Docker inside the container, run the last `mkdir`/`cp` lines on the Docker host under `/etc/docker/certs.d/${REG_HOST}` and restart the host daemon instead.
+
 ## Jenkins pipeline stages
 1. **Checkout** – sync repository.
 2. **Unit Tests** – run `mvn test` and publish surefire reports.

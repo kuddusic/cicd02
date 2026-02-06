@@ -59,7 +59,7 @@ pipeline {
           set -euo pipefail
           oc login ${OC_SERVER} --token=${OC_TOKEN} $( [ "${OC_INSECURE}" = "true" ] && echo '--insecure-skip-tls-verify=true' )
           oc project ${OC_PROJECT}
-          IMAGE_TAG=${IMAGE_REGISTRY}/${OC_PROJECT}/${IMAGE_NAME}:${BUILD_NUMBER}
+          IMAGE_TAG=${IMAGE_REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}
           echo "Tagging ${IMAGE_NAME}:${BUILD_NUMBER} as ${IMAGE_TAG}"
           echo "${IMAGE_CREDENTIALS}" | docker login ${IMAGE_REGISTRY} --username unused --password-stdin
           docker tag ${IMAGE_NAME}:${BUILD_NUMBER} ${IMAGE_TAG}
