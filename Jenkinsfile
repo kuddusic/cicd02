@@ -8,7 +8,8 @@ pipeline {
     APP_NAME = 'hello-world-service'
     IMAGE_NAME = 'hello-world-service'
     JAVA_OPTS = '-Xms512m -Xmx512m'
-  }
+    DOCKER_DEFAULT_PLATFORM = 'linux/amd64'
+ }
   parameters {
     string(name: 'OC_SERVER', defaultValue: 'https://api.ocp.local.kuddusi.cc:6443', description: 'OpenShift API URL')
     string(name: 'OC_PROJECT', defaultValue: 'demo', description: 'OpenShift project/namespace')
