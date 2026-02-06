@@ -41,10 +41,18 @@ docker run -p 8080:8080 hello-world-service:local
    ```
 
 ## Credentials expected by the pipeline
-Create the following credentials in **Manage Jenkins → Credentials**:
-- `openshift-token` – *Secret text* containing an OpenShift API token (typically created for a service account with `system:image-puller` permissions).
-- `openshift-image-registry` – *Username with password* is not required; store the registry host in the **Username** field (e.g., `image-registry.openshift-image-registry.svc:5000`) and any placeholder password. The pipeline uses this credential to inject the registry hostname.
-- `openshift-pull-secret` – *Secret file or text* containing the base64 decoded pull secret JSON. The pipeline logs into the registry by piping this value to `docker login`.
+Create the following credentials in **Manage Jenkins → Credentials** and populate them with OpenShift data:
+- `openshift-token` – *Secret text* containing an OpenShift API token. Recommended workflow:
+  ```bash
+  oc new-project demo
+  oc create sa jenkins-deployer
+  oc policy add-role-to-user edit -z jenkins-deployer
+  # OpenShift 4.11+ deprecates get-token; create a fresh token instead
+  TOKEN=$(oc create token jenkins-deployer --duration=24h)
+  ```
+  Paste `TOKEN` into the credential.
+- `openshift-image-registry` – Store the internal registry host in the **Username** field (e.g., output of `oc registry info`) and any placeholder password. The pipeline only needs the hostname to compose push targets.
+- `openshift-pull-secret` – *Secret file or text* containing the decoded pull-secret JSON returned from `oc registry login --to=./pull-secret`. View the file and paste its JSON so Jenkins can log into the registry via `docker login`.
 
 Update the credential IDs inside `Jenkinsfile` if you choose different names.
 
@@ -67,9 +75,10 @@ The pipeline parameters let you change cluster information at run time:
    ```bash
    oc new-project demo
    oc create sa jenkins-deployer
-   oc policy add-role-to-user edit -z jenkins-deployer
-   oc policy add-role-to-user system:image-puller system:serviceaccount:demo:default
-   TOKEN=$(oc sa get-token jenkins-deployer)
+  oc policy add-role-to-user edit -z jenkins-deployer
+  oc policy add-role-to-user system:image-puller system:serviceaccount:demo:default
+  # get a new short-lived token (defaults to 24h). specify --namespace if different.
+  TOKEN=$(oc create token jenkins-deployer --duration=24h)
    echo $TOKEN
    ```
    Store `TOKEN` inside the `openshift-token` credential.
@@ -97,6 +106,51 @@ The pipeline parameters let you change cluster information at run time:
 2. In Jenkins, create a Multibranch Pipeline or Pipeline job pointing at this repo.
 3. Configure job-level parameters as needed (pipeline parameters are defined inside `Jenkinsfile`).
 4. Trigger the build; upon success you can access the Route printed in the OpenShift console/logs.
+
+### Importing the Jenkinsfile via GUI
+1. Sign in to Jenkins → **New Item**.
+2. Enter a job name such as `hello-world-service`, choose **Pipeline**, click **OK**.
+3. In **Pipeline** → **Definition**, select **Pipeline script from SCM**.
+4. Pick **Git**, set the repository URL for this project, and optionally the credentials/branch.
+5. Keep **Script Path** as `Jenkinsfile` (or change if you relocate it), save, and click **Build Now**.
+6. For multibranch setups, create a **Multibranch Pipeline** item instead, add the repo as a source, and Jenkins will auto-discover the Jenkinsfile on each branch.
+
+### Importing the Jenkinsfile via CLI
+1. Download the CLI jar from your Jenkins instance:
+   ```bash
+   curl -o jenkins-cli.jar http://localhost:8081/jnlpJars/jenkins-cli.jar
+   ```
+2. Create a minimal job definition referencing your Git repo:
+   ```bash
+   cat > pipeline-job.xml <<'EOF'
+   <?xml version='1.1' encoding='UTF-8'?>
+   <flow-definition plugin="workflow-job">
+     <description>Hello World OpenShift pipeline</description>
+     <triggers/>
+     <definition class="org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition" plugin="workflow-cps">
+       <scm class="hudson.plugins.git.GitSCM" plugin="git">
+         <userRemoteConfigs>
+           <hudson.plugins.git.UserRemoteConfig>
+             <url>https://github.com/your-org/hello-openshift.git</url>
+           </hudson.plugins.git.UserRemoteConfig>
+         </userRemoteConfigs>
+         <branches>
+           <hudson.plugins.git.BranchSpec><name>*/main</name></hudson.plugins.git.BranchSpec>
+         </branches>
+       </scm>
+       <scriptPath>Jenkinsfile</scriptPath>
+       <lightweight>true</lightweight>
+     </definition>
+   </flow-definition>
+   EOF
+   ```
+3. Create or update the Jenkins job:
+   ```bash
+   java -jar jenkins-cli.jar -s http://localhost:8081 -auth admin:$(cat ./admin-password) create-job hello-world-service < pipeline-job.xml
+   # to update later:
+   java -jar jenkins-cli.jar -s http://localhost:8081 -auth admin:$(cat ./admin-password) update-job hello-world-service < pipeline-job.xml
+   ```
+   Replace the URL/credentials with values for your environment. The CLI will pull the Jenkinsfile from SCM each build just like the GUI job.
 
 ## Troubleshooting tips
 - Ensure the Jenkins container user (root) can execute `docker` commands via the mounted socket.

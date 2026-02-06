@@ -11,7 +11,7 @@ pipeline {
     JAVA_OPTS = '-Xms512m -Xmx512m'
   }
   parameters {
-    string(name: 'OC_SERVER', defaultValue: 'https://api.example.openshift.com:6443', description: 'OpenShift API URL')
+    string(name: 'OC_SERVER', defaultValue: 'https://api.ocp.local.kuddusi.cc:6443', description: 'OpenShift API URL')
     string(name: 'OC_PROJECT', defaultValue: 'demo', description: 'OpenShift project/namespace')
     booleanParam(name: 'OC_INSECURE', defaultValue: true, description: 'Skip TLS verify for self-signed clusters')
     choice(name: 'HELLO_MESSAGE', choices: ['Hello OpenShift', 'Hello from Jenkins', 'Hola Mundo'], description: 'Runtime greeting message')
@@ -19,23 +19,18 @@ pipeline {
   options {
     buildDiscarder(logRotator(numToKeepStr: '10'))
     disableConcurrentBuilds()
-    timestamps()
   }
   stages {
-    stage('Checkout') {
-      steps {
-        checkout scm
-      }
-    }
+    // stage('Checkout') {
+    //   steps {
+    //     checkout scm
+    //   }
+    // }
     stage('Unit Tests') {
       steps {
         dir('hello-service') {
           sh 'mvn -B test'
-        }
-      }
-      post {
-        always {
-          junit 'hello-service/target/surefire-reports/*.xml'
+          archiveArtifacts artifacts: 'target/surefire-reports/*.xml', allowEmptyArchive: true
         }
       }
     }
