@@ -7,7 +7,6 @@ pipeline {
   environment {
     APP_NAME = 'hello-world-service'
     IMAGE_NAME = 'hello-world-service'
-    IMAGE_REGISTRY = credentials('openshift-image-registry')
     JAVA_OPTS = '-Xms512m -Xmx512m'
   }
   parameters {
@@ -54,14 +53,17 @@ pipeline {
         IMAGE_CREDENTIALS = credentials('openshift-pull-secret')
       }
       steps {
-        withCredentials([string(credentialsId: 'openshift-token', variable: 'OC_TOKEN')]) {
+        withCredentials([
+          string(credentialsId: 'openshift-token', variable: 'OC_TOKEN'),
+          usernamePassword(credentialsId: 'openshift-image-registry', usernameVariable: 'REGISTRY_HOST', passwordVariable: 'REGISTRY_PASS')
+        ]) {
           sh '''
           set -euo pipefail
           oc login ${OC_SERVER} --token=${OC_TOKEN} $( [ "${OC_INSECURE}" = "true" ] && echo '--insecure-skip-tls-verify=true' )
           oc project ${OC_PROJECT}
-          IMAGE_TAG=${IMAGE_REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}
+          IMAGE_TAG=${REGISTRY_HOST}/${IMAGE_NAME}:${BUILD_NUMBER}
           echo "Tagging ${IMAGE_NAME}:${BUILD_NUMBER} as ${IMAGE_TAG}"
-          echo "${IMAGE_CREDENTIALS}" | docker login ${IMAGE_REGISTRY} --username unused --password-stdin
+          echo "${IMAGE_CREDENTIALS}" | docker login ${REGISTRY_HOST} --username unused --password-stdin
           docker tag ${IMAGE_NAME}:${BUILD_NUMBER} ${IMAGE_TAG}
           docker push ${IMAGE_TAG}
           if oc get deployment/${APP_NAME} >/dev/null 2>&1; then
