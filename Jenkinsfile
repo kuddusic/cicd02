@@ -61,7 +61,7 @@ pipeline {
           oc project ${OC_PROJECT}
           IMAGE_TAG=${IMAGE_REGISTRY}/${OC_PROJECT}/${IMAGE_NAME}:${BUILD_NUMBER}
           echo "Tagging ${IMAGE_NAME}:${BUILD_NUMBER} as ${IMAGE_TAG}"
-          echo ${IMAGE_CREDENTIALS} | docker login ${IMAGE_REGISTRY} --username unused --password-stdin
+          echo "${IMAGE_CREDENTIALS}" | docker login ${IMAGE_REGISTRY} --username unused --password-stdin
           docker tag ${IMAGE_NAME}:${BUILD_NUMBER} ${IMAGE_TAG}
           docker push ${IMAGE_TAG}
           if oc get deployment/${APP_NAME} >/dev/null 2>&1; then

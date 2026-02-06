@@ -51,7 +51,7 @@ Create the following credentials in **Manage Jenkins → Credentials** and popul
   TOKEN=$(oc create token jenkins-deployer --duration=24h)
   ```
   Paste `TOKEN` into the credential.
-- `openshift-image-registry` – Store the internal registry host in the **Username** field (e.g., output of `oc registry info`) and any placeholder password. The pipeline only needs the hostname to compose push targets.
+- `openshift-image-registry` – Store the internal registry host in the **Username** field (e.g., output of `oc registry info`) and any placeholder password. Example: set **Username** to `default-route-openshift-image-registry.apps.ocp.local.kuddusi.cc` and **Password** to `unused`. The pipeline reads only the username/host and ignores the password.
 - `openshift-pull-secret` – *Secret file or text* containing the decoded pull-secret JSON returned from `oc registry login --to=./pull-secret`. View the file and paste its JSON so Jenkins can log into the registry via `docker login`.
 
 Update the credential IDs inside `Jenkinsfile` if you choose different names.
