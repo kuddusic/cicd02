@@ -42,19 +42,17 @@ jobs:
           cache: maven
           cache-dependency-path: hello-service/pom.xml
 
-      - name: Run unit tests
-        run: mvn -B test
-
-      - name: Package application
-        run: mvn -B clean package -DskipTests
-
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
           languages: java-kotlin
+          source-root: hello-service
 
-      - name: Build for CodeQL
-        run: mvn -B compile -DskipTests
+      - name: Run unit tests
+        run: mvn -B test
+
+      - name: Package application
+        run: mvn -B package -DskipTests
 
       - name: Analyze with CodeQL
         uses: github/codeql-action/analyze@v4
