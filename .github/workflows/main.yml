@@ -26,9 +26,6 @@ env:
 jobs:
   build-test-scan:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: hello-service
 
     steps:
       - name: Checkout
@@ -45,14 +42,12 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
-          languages: java-kotlin
-          source-root: hello-service
+          languages: java
+          build-mode: manual
 
-      - name: Run unit tests
-        run: mvn -B test
-
-      - name: Package application
-        run: mvn -B package -DskipTests
+      # Run Maven from repo root so CodeQL's tracer paths match the checked-out tree.
+      - name: Build, test, and package (CodeQL)
+        run: mvn -B -f hello-service/pom.xml clean verify
 
       - name: Analyze with CodeQL
         uses: github/codeql-action/analyze@v4
@@ -67,10 +62,10 @@ jobs:
       - name: Build container image
         run: |
           docker build \
-            -f Dockerfile \
+            -f hello-service/Dockerfile \
             -t $REGISTRY/$IMAGE_NAME:${{ github.sha }} \
             -t $REGISTRY/$IMAGE_NAME:latest \
-            .
+            hello-service
 
       - name: Scan image with Trivy
         uses: aquasecurity/trivy-action@v0.35.0
